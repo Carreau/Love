@@ -1,0 +1,5 @@
+pkgtools
+pygithub
+travispy
+cookiecutter
+keyring
