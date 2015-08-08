@@ -4,7 +4,6 @@ import emoji
 import os
 import sys
 import random
-import getpass
 import difflib
 import subprocess
 import webbrowser
@@ -166,7 +165,7 @@ def main(proposal=None, target_dir=None):
         log.info("I'll try to open github for you at the right page, otherwise please visit %s", GITHUB_NEW_TOKEN_URI)
         sleep(5)
         webbrowser.open_new_tab(GITHUB_NEW_TOKEN_URI)
-        token = getpass.getpass('github token:')
+        token = input('github token:')
         keyring.set_password('session','github_token', token)
         log.info('token stored in your keyring as session:github_token')
 
