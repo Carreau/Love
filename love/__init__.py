@@ -4,7 +4,7 @@ Package creation and management, using Love.
 So now you can say that your packages was made with Love.
 """
 
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 from .love import main
 
