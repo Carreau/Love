@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+import argparse
+
+
+
 import emoji
 import os
 import sys
@@ -39,7 +43,7 @@ heart = """
                           :                   
 """
 
-from colored import fg, bg, attr
+from colored import fg, attr
 
 cheart = "%s%s%s" %(fg('deep_pink_3b'),heart, attr(0))
 
@@ -135,12 +139,21 @@ class LogFormatter(logging.Formatter):
 
 
 
-def main(proposal=None, target_dir=None):
+def main():
     """
     completly set-up a package in the target dir (using cookie cutter) 
         
 
     """
+    parser = argparse.ArgumentParser(description='Bootstrap a Python Package with Love.')
+    parser.add_argument('name', metavar='name', type=str, nargs='?',
+                       help='a potential package name')
+    parser.add_argument('target_dir', type=str, nargs='?',
+                       help='target directory in which to create the package')
+    args = parser.parse_args()
+    proposal = args.name
+    target_dir = args.target_dir
+
     print(cheart)
     log = logging.getLogger(__name__)
     handler = logging.StreamHandler()
