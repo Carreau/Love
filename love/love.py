@@ -331,11 +331,15 @@ def project_layout(proposal, user, repo, log):
 
     os.mkdir(proposal)
     with open( '/'.join([proposal, '__init__.py']), 'w') as f: 
-        f.write("""
-        
-        __version__ = '0.0.1'
+        f.write('''
+"""
+a simple package
+"""
 
-        """)
+
+__version__ = '0.0.1'
+
+        ''')
 
     #generate_files(
     #        repo_dir=os.path.expanduser('~/.cookiecutters/cookiecutter-pypackage/'),
