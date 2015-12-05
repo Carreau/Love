@@ -2,6 +2,8 @@
 
 import argparse
 
+from love import __version__
+
 
 
 import emoji
@@ -14,7 +16,12 @@ import webbrowser
 
 import pkgtools.pypi as pp
 import github
+
+
 from travispy import TravisPy
+from overprint import overprint
+from withlog import Info, Message, print_statement
+import withlog
 
 from time import sleep
 # from cookiecutter.main import generate_context, generate_files
@@ -25,29 +32,40 @@ import keyring
 import logging
 
 heart = """
-    oo                                        
-       oo     OOOOOOOO:       OOOOOOOO!       
-          oOOOO!!!!;;;;O    OO.......:;!O     
-         'OOO!!!;;;;;;;;O  O.......:   ;!O    
-         OOO!!!!;;::::::.OO........:    ;!O   
-         OO!!!!;;:::::..............:   ;!O   
-         OOO!!!;::::::..............:   ;!O   
-          OO!!;;::::::.............:   ;!O           Made With Love
-           OO!;;::::::......oo.....::::!O     
-             O!!;::::::........oo..:::O                  - M - 
-               !!!;:::::..........ooO         
-                  !!;:::::.......O   oo       
-                    ;;::::.....O        oo  ,o
-                       :::..O              ooo
-                         ::.              oooo
-                          :                   
-"""
+   
+                L       OOO    V   V  EEEEE
+                L      O   O   V   V  E    
+                L      O   O   V   V  EEE  
+                L      O   O    V V   E    
+    oo          LLLLL   OOO      V    EEEEE
+       oo                                        
+          oo     OOOOOOOO:       OOOOOOOO!       
+             oOOOO!!!!;;;;O    OO.......:;!O     
+            'OOO!!!;;;;;;;;O  O.......:   ;!O    
+            OOO!!!!;;::::::.OO........:    ;!O   
+            OO!!!!;;:::::..............:   ;!O   
+            OOO!!!;::::::..............:   ;!O   
+             OO!!;;::::::.............:   ;!O           Made With Love
+              OO!;;::::::......oo.....::::!O     
+                O!!;::::::........oo..:::O                  - M - 
+                  !!!;:::::..........ooO         
+                     !!;:::::.......O   oo              version : {version}
+                       ;;::::.....O        oo  ,o
+                          :::..O              ooo
+                            ::.              oooo
+                             :                   
+""".format(version=__version__)
 
-from colored import fg, attr
+from colored import fg, attr, bg
 
-cheart = "%s%s%s" %(fg('deep_pink_3b'),heart, attr(0))
+cheart = '\n'.join(map(
+        lambda l : "%s%s%s" %(fg('deep_pink_3b'),l, attr(0)),
+        heart.split('\n')
+        ))
 
-
+class WLove(Message):
+   def __init__(self, title):
+        super().__init__(title,1, fg('white') + bg('deep_pink_3b') )
 
 
 
@@ -140,6 +158,10 @@ class LogFormatter(logging.Formatter):
 
 
 def main():
+    with WLove('Love') as p:
+        submain(p)
+
+def submain(p):
     """
     completly set-up a package in the target dir (using cookie cutter) 
         
@@ -150,24 +172,31 @@ def main():
                        help='a potential package name')
     parser.add_argument('target_dir', type=str, nargs='?',
                        help='target directory in which to create the package')
+    parser.add_argument('--version', help='print version, logo and exist', action='store_true')
     args = parser.parse_args()
     proposal = args.name
     target_dir = args.target_dir
+    
 
-    print(cheart)
+    LOGLEVEL = 50
     log = logging.getLogger(__name__)
     handler = logging.StreamHandler()
     handler.setFormatter(LogFormatter())
     logging.root.addHandler(handler)
-    logging.root.setLevel(20)
-    log.setLevel(20)
+    logging.root.setLevel(LOGLEVEL)
+    log.setLevel(LOGLEVEL)
 
-    log.info("INFO TEST")
-    log.warn("WARN TEST")
+    log.info = withlog.glog
+
+    p(cheart)
+    if args.version : 
+       p('Version : '+ __version__)
+       sys.exit(0)
 
     if not target_dir:
-        target_dir = os.getcwd()
-        log.info('will use target dir : %s', target_dir)
+        with Info('Target directory'):
+            target_dir = os.getcwd()
+            log.info('Will use target dir : %s', target_dir)
 
     token = keyring.get_password('session','github_token')
 
@@ -197,52 +226,61 @@ def main():
     plist = None
 
     #  compare name with existing package name, warn if too close
-
-    log.info('Comparing "%s" to other existing package names...' % proposal)
-    pypi = pp.PyPIXmlRpc()
-    # cache that on a weekly basis ?
-    if plist is None:
-        plist = pypi.list_packages()
-    closest = difflib.get_close_matches(proposal.lower(), map(str.lower, plist), cutoff=0.8)
-    if closest:
-        if proposal in closest:
-            log.error(proposal, 'already exists, maybe you would prefer to contribute to this package?')
+    with Info('Similar projects'):
+        log.info('Comparing "%s" to other existing package names...' % proposal)
+        pypi = pp.PyPIXmlRpc()
+        # cache that on a weekly basis ?
+        if plist is None:
+            plist = pypi.list_packages()
+        closest = difflib.get_close_matches(proposal.lower(), map(str.lower, plist), cutoff=0.8)
+        if closest:
+            if proposal in closest:
+                log.error(proposal, 'already exists, maybe you would prefer to contribute to this package?')
+            else:
+                log.warn('%s name is close to the following package name: %s', proposal,  closest)
+                response = input('Do you still want to continue ? [Y/n]')
+                if not response.lower() == 'y':
+                    sys,exit('Aborting')
         else:
-            log.warn('%s name is close to the following package name: %s', proposal,  closest)
-    else:
 
-        log.info('"%s" seems to have a sufficiently specific name, continuing...', proposal)
+            log.info('"%s" seems to have a sufficiently specific name, continuing...', proposal)
 
 
     #  Actually authenticate with github 
     #  Create (if do not exist) the named repo, and and clone URL.
+    with Info('Github'):
+        gh = github.Github(token)
+        user = gh.get_user()
+        log.info('Logged in on GitHub as %s ', user.name)
+        from github import UnknownObjectException 
+        try:
+            repo = user.get_repo(proposal)
+            log.info('It appears like %s repository already exists, using it as remote', proposal)
+        except UnknownObjectException:
+            repo = user.create_repo(proposal)
 
-    gh = github.Github(token)
-    user = gh.get_user()
-    log.info('Logged in on GitHub as %s ', user.name)
-    from github import UnknownObjectException 
-    try:
-        repo = user.get_repo(proposal)
-        log.info('It appears like %s repository already exists, using it as remote', proposal)
-    except UnknownObjectException:
-        repo = user.create_repo(proposal)
-
-    ssh_url = repo.ssh_url
-    slug = repo.full_name
-    log.info('Working with repository %s', slug)
+        ssh_url = repo.ssh_url
+        slug = repo.full_name
+        log.info('Working with repository %s', slug)
 
 
-    # Clone github repo locally, over SSH an chdir into it
+        # Clone github repo locally, over SSH an chdir into it
 
-    log.info("Cloning github repository locally")
-    log.info("Calling subprocess : %s", ' '.join(['git', 'clone' , ssh_url]))
-    subprocess.call(['git', 'clone' , ssh_url])
+        log.info("Cloning github repository locally")
+        log.info("Calling subprocess : %s", ' '.join(['git', 'clone' , ssh_url]))
+        subprocess.call(['git', 'clone' , ssh_url])
+        
     os.chdir(proposal)
     log.debug('I am now in %s', os.getcwd())
 
-    repo, user = enable_travis(token, slug, log) 
-    project_layout(proposal, user, repo, log)
-    packaging_init(log)
+    with Info('Continuous Integration: Configuring Travis-CI'):
+        repo, user = enable_travis(token, slug, log) 
+
+    with Info('Setting up Layout'):
+        project_layout(proposal, user, repo, log)
+
+    with Info('Setting up Package with Flit.') as p, withlog.print_statement(p), withlog.input():
+        packaging_init(log)
 
 
 # insert travis here. 
@@ -258,7 +296,6 @@ def enable_travis(token, slug, log):
 
     travis = TravisPy.github_auth(token, uri='https://api.travis-ci.org')
     user = travis.user()
-    log.info('============= Configuring Travis.... ===========')
     log.info('Travis user: %s', user.name)
 
     # Ask travis to sync with github, try to fetch created repo with exponentially decaying time.
@@ -298,7 +335,6 @@ def enable_travis(token, slug, log):
     else:
         log.info("I was not able to set up Travis hooks... something went wrong.")
 
-    log.info('========== Done configuring Travis.... =========')
     return repo, user
 
 def codecov():
@@ -341,8 +377,11 @@ def project_layout(proposal, user, repo, log):
     # context['cookiecutter']['project_name'] = proposal
     # context['cookiecutter']['repo_name'] = proposal.lower()
 
+    try:
+        os.mkdir(proposal)
+    except FileExistsError:
+        log.info('Skip directory structure, as project seem to already exists')
 
-    os.mkdir(proposal)
     with open( '/'.join([proposal, '__init__.py']), 'w') as f: 
         f.write('''
 """
@@ -362,7 +401,7 @@ __version__ = '0.0.1'
     log.info('Workig in %s', os.getcwd())
     os.listdir('.')
 
-    subprocess.call(['git','add','.'])
+    subprocess.call(['git','add','.'], )
 
     subprocess.call(['git','commit',"-am'initial commit of %s'" % proposal])
 
@@ -371,9 +410,7 @@ __version__ = '0.0.1'
     #webbrowser.open('https://travis-ci.org/{slug}'.format(slug=repo.slug))
 
 def packaging_init(log):
-    log.info('======= Setting up packaging with flit =========')
     log.info('Please answer the following questions: ')
     from flit.init import TerminalIniter
     TerminalIniter().initialise()
-    log.info('======= Done Setting up packaging ==============')
 
