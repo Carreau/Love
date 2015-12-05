@@ -173,6 +173,7 @@ def submain(p):
     parser.add_argument('target_dir', type=str, nargs='?',
                        help='target directory in which to create the package')
     parser.add_argument('--version', help='print version, logo and exist', action='store_true')
+    parser.add_argument('--no-banner',  help='do not print banner', action='store_false')
     args = parser.parse_args()
     proposal = args.name
     target_dir = args.target_dir
@@ -188,7 +189,8 @@ def submain(p):
 
     log.info = withlog.glog
 
-    p(cheart)
+    if args.no_banner:
+        p(cheart)
     if args.version : 
        p('Version : '+ __version__)
        sys.exit(0)
@@ -198,18 +200,6 @@ def submain(p):
             target_dir = os.getcwd()
             log.info('Will use target dir : %s', target_dir)
 
-    token = keyring.get_password('session','github_token')
-
-    if token is None:
-        GITHUB_NEW_TOKEN_URI = 'https://github.com/settings/tokens/new'
-        log.info(emoji.emojize(":heart_with_arrow: == LOVE == :heart_with_arrow:"))
-        log.info("I will need a new token to access your GitHub account, please give me a token that have `write:repo_hook` enable.")
-        log.info("I'll try to open github for you at the right page, otherwise please visit %s", GITHUB_NEW_TOKEN_URI)
-        sleep(5)
-        webbrowser.open_new_tab(GITHUB_NEW_TOKEN_URI)
-        token = input('github token:')
-        keyring.set_password('session','github_token', token)
-        log.info('token stored in your keyring as session:github_token')
 
 
     # generate a python package name
@@ -249,41 +239,59 @@ def submain(p):
     #  Actually authenticate with github 
     #  Create (if do not exist) the named repo, and and clone URL.
     with Info('Github'):
-        gh = github.Github(token)
-        user = gh.get_user()
-        log.info('Logged in on GitHub as %s ', user.name)
-        from github import UnknownObjectException 
-        try:
-            repo = user.get_repo(proposal)
-            log.info('It appears like %s repository already exists, using it as remote', proposal)
-        except UnknownObjectException:
-            repo = user.create_repo(proposal)
-
-        ssh_url = repo.ssh_url
-        slug = repo.full_name
-        log.info('Working with repository %s', slug)
-
-
-        # Clone github repo locally, over SSH an chdir into it
-
-        log.info("Cloning github repository locally")
-        log.info("Calling subprocess : %s", ' '.join(['git', 'clone' , ssh_url]))
-        subprocess.call(['git', 'clone' , ssh_url])
+        token, user = setup_github_credentials(log=log)
+        slug = setup_github_repository(user, proposal, log)
         
     os.chdir(proposal)
     log.debug('I am now in %s', os.getcwd())
 
     with Info('Continuous Integration: Configuring Travis-CI'):
-        repo, user = enable_travis(token, slug, log) 
+        enable_travis(token, slug, log) 
 
     with Info('Setting up Layout'):
-        project_layout(proposal, user, repo, log)
+        project_layout(proposal, None, None, log)
 
     with Info('Setting up Package with Flit.') as p, withlog.print_statement(p), withlog.input():
         packaging_init(log)
 
 
-# insert travis here. 
+def setup_github_credentials(log):
+    token = keyring.get_password('session','github_token')
+
+    if token is None:
+        GITHUB_NEW_TOKEN_URI = 'https://github.com/settings/tokens/new'
+        log.info(emoji.emojize(":heart_with_arrow: == LOVE == :heart_with_arrow:"))
+        log.info("I will need a new token to access your GitHub account, please give me a token that have `write:repo_hook` enable.")
+        log.info("I'll try to open github for you at the right page, otherwise please visit %s", GITHUB_NEW_TOKEN_URI)
+        sleep(5)
+        webbrowser.open_new_tab(GITHUB_NEW_TOKEN_URI)
+        token = input('github token:')
+        keyring.set_password('session','github_token', token)
+        log.info('token stored in your keyring as session:github_token')
+    gh = github.Github(token)
+    user = gh.get_user()
+    log.info('Logged in on GitHub as %s ', user.name)
+    return token, user
+
+def setup_github_repository(user, proposal, log):
+    from github import UnknownObjectException 
+    try:
+        repo = user.get_repo(proposal)
+        log.info('It appears like %s repository already exists, using it as remote', repr(proposal))
+    except UnknownObjectException:
+        repo = user.create_repo(proposal)
+
+    ssh_url = repo.ssh_url
+    slug = repo.full_name
+    log.info('Working with repository %s', slug)
+
+
+    # Clone github repo locally, over SSH an chdir into it
+
+    log.info("Cloning github repository locally")
+    log.info("Calling subprocess : %s", ' '.join(['git', 'clone' , ssh_url]))
+    subprocess.call(['git', 'clone' , ssh_url])
+    return slug
 
 def enable_travis(token, slug, log):
     """
@@ -335,7 +343,7 @@ def enable_travis(token, slug, log):
     else:
         log.info("I was not able to set up Travis hooks... something went wrong.")
 
-    return repo, user
+    return user
 
 def codecov():
     pass
@@ -351,7 +359,7 @@ def coveralls():
     #     - easier way to get github token
     pass
 
-def project_layout(proposal, user, repo, log):
+def project_layout(proposal, user=None, repo=None, log=None):
     """
     generate the project template
 
