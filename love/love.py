@@ -231,15 +231,14 @@ def submain(p):
             closest = difflib.get_close_matches(proposal.lower(), map(str.lower, plist), cutoff=0.8)
             if closest:
                 if proposal in closest:
-                    log.error(proposal, 'already exists, maybe you would prefer to contribute to this package?')
+                    log.info(proposal + ' already exists, maybe you would prefer to contribute to this package?')
                 else:
-                    log.warn('%s name is close to the following package name: %s', proposal,  closest)
-                    response = input('Do you still want to continue ? [Y/n]')
-                    if not response.lower() == 'y':
-                        sys,exit('Aborting')
+                    log.info('%s name is close to the following package name: %s', proposal,  closest)
+                response = input('Do you still want to continue ? [Y/n]')
+                if not response.lower() == 'y':
+                    sys,exit('Aborting')
             else:
-
-                log.info('"%s" seems to have a sufficiently specific name, continuing...', proposal)
+                log.info('"%s" seems like a great name !', proposal)
 
 
     #  Actually authenticate with github 
