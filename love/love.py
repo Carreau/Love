@@ -174,6 +174,11 @@ def submain(p):
                        help='target directory in which to create the package')
     parser.add_argument('--version', help='print version, logo and exist', action='store_true')
     parser.add_argument('--no-banner',  help='do not print banner', action='store_false')
+
+    parser.add_argument('--no-travis', help='prevent Travis from being set-up', action='store_true')
+    parser.add_argument('--no-flit', help='prevent usage of Flit to set-up-package', action='store_true')
+    parser.add_argument('--no-similar', help='prevent search of similar project on PyPI', action='store_true')
+
     args = parser.parse_args()
     proposal = args.name
     target_dir = args.target_dir
@@ -216,24 +221,25 @@ def submain(p):
     plist = None
 
     #  compare name with existing package name, warn if too close
-    with Info('Similar projects'):
-        log.info('Comparing "%s" to other existing package names...' % proposal)
-        pypi = pp.PyPIXmlRpc()
-        # cache that on a weekly basis ?
-        if plist is None:
-            plist = pypi.list_packages()
-        closest = difflib.get_close_matches(proposal.lower(), map(str.lower, plist), cutoff=0.8)
-        if closest:
-            if proposal in closest:
-                log.error(proposal, 'already exists, maybe you would prefer to contribute to this package?')
+    if not args.no_similar:
+        with Info('Similar projects'):
+            log.info('Comparing "%s" to other existing package names...' % proposal)
+            pypi = pp.PyPIXmlRpc()
+            # cache that on a weekly basis ?
+            if plist is None:
+                plist = pypi.list_packages()
+            closest = difflib.get_close_matches(proposal.lower(), map(str.lower, plist), cutoff=0.8)
+            if closest:
+                if proposal in closest:
+                    log.error(proposal, 'already exists, maybe you would prefer to contribute to this package?')
+                else:
+                    log.warn('%s name is close to the following package name: %s', proposal,  closest)
+                    response = input('Do you still want to continue ? [Y/n]')
+                    if not response.lower() == 'y':
+                        sys,exit('Aborting')
             else:
-                log.warn('%s name is close to the following package name: %s', proposal,  closest)
-                response = input('Do you still want to continue ? [Y/n]')
-                if not response.lower() == 'y':
-                    sys,exit('Aborting')
-        else:
 
-            log.info('"%s" seems to have a sufficiently specific name, continuing...', proposal)
+                log.info('"%s" seems to have a sufficiently specific name, continuing...', proposal)
 
 
     #  Actually authenticate with github 
@@ -245,14 +251,16 @@ def submain(p):
     os.chdir(proposal)
     log.debug('I am now in %s', os.getcwd())
 
-    with Info('Continuous Integration: Configuring Travis-CI'):
-        enable_travis(token, slug, log) 
+    if not args.no_travis:
+        with Info('Continuous Integration: Configuring Travis-CI'):
+            enable_travis(token, slug, log) 
 
     with Info('Setting up Layout'):
         project_layout(proposal, None, None, log)
 
-    with Info('Setting up Package with Flit.') as p, withlog.print_statement(p), withlog.input():
-        packaging_init(log)
+    if not args.no_flit:
+        with Info('Setting up Package with Flit.') as p, withlog.print_statement(p), withlog.input():
+            packaging_init(log)
 
 
 def setup_github_credentials(log):
