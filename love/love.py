@@ -409,6 +409,22 @@ __version__ = '0.0.1'
 
         ''')
 
+    with io.open('.travis.yml', 'w') as f:
+        f.write(
+"""
+language: python
+python:
+    - 3.5
+    - 3.4
+    - 3.3
+install:
+    - pip install flit pytest
+    - flit install --symlink
+script:
+    - py.test
+"""
+        )
+
     #generate_files(
     #        repo_dir=os.path.expanduser('~/.cookiecutters/cookiecutter-pypackage/'),
     #        context=context
