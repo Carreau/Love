@@ -8,7 +8,6 @@ import argparse
 __version__ = '0.0.2'
 
 
-import emoji
 import os
 import sys
 import random
@@ -17,11 +16,13 @@ import subprocess
 
 import pkgtools.pypi as pp
 import github
+import emoji
 
 
 from travispy import TravisPy
 from overprint import overprint
 from withlog import Info, Message, print_statement
+
 import withlog
 
 from time import sleep
@@ -268,7 +269,9 @@ def submain(p):
     if not args.no_flit:
         with Info('Setting up Package with Flit.') as p, withlog.print_statement(p), withlog.input():
             packaging_init(log)
-
+            with Info('Python Minimal version') as p, withlog.print_statement(p):
+                python_requires('>=3.4')
+                p('Package marked as requiring python >= 3.4')
 
 
 
@@ -290,10 +293,9 @@ def enable_travis(token, slug, log):
     last_sync = user.synced_at
     log.info('syncing Travis with Github, this can take a while...')
     repo = travis._session.post(travis._session.uri+'/users/sync')
-    import time
     for i in range(10):
         try:
-            time.sleep((1.5)**i)
+            sleep((1.5)**i)
             repo = travis.repo(slug)
             if travis.user().synced_at == last_sync:
                 raise ValueError('synced not really done, travis.repo() can be a duplicate')
@@ -326,6 +328,25 @@ def enable_travis(token, slug, log):
 
 def codecov():
     pass
+
+def travis_yml():
+    with open('.travis.yml', 'w') as f:
+        f.write(
+"""
+language: python
+python:
+    - 3.5
+    - 3.4
+before_install:
+    - pip install flit pytest
+install:
+    - flit install --symlink
+script:
+    - py.test
+"""
+        )
+
+
 
 def project_layout(proposal, user=None, repo=None, log=None):
     """
@@ -369,21 +390,8 @@ __version__ = '0.0.1'
 
         ''')
 
-    with io.open('.travis.yml', 'w') as f:
-        f.write(
-"""
-language: python
-python:
-    - 3.5
-    - 3.4
-    - 3.3
-install:
-    - pip install flit pytest
-    - flit install --symlink
-script:
-    - py.test
-"""
-        )
+
+    travis_yml()
 
     #generate_files(
     #        repo_dir=os.path.expanduser('~/.cookiecutters/cookiecutter-pypackage/'),
