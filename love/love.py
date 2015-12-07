@@ -33,6 +33,7 @@ import keyring
 import logging
 
 from .github import setup_github_credentials, setup_github_repository
+from .flit import python_requires
 
 heart = """
    
@@ -180,6 +181,7 @@ def submain(p):
     parser.add_argument('--no-travis', help='prevent Travis from being set-up', action='store_true')
     parser.add_argument('--no-flit', help='prevent usage of Flit to set-up-package', action='store_true')
     parser.add_argument('--no-similar', help='prevent search of similar project on PyPI', action='store_true')
+    parser.add_argument('--python', help='set-up the minimal required python', action='store_true')
 
     args = parser.parse_args()
     proposal = args.name
@@ -201,6 +203,10 @@ def submain(p):
     if args.version : 
        p('Version : '+ __version__)
        sys.exit(0)
+
+    if args.python :
+        python_requires()
+        sys.exit(0)
 
     if not target_dir:
         with Info('Target directory'):

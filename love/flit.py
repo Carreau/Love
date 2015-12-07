@@ -25,3 +25,16 @@ def modify_config(path):
     _validate_config(config, path)
     with path.open('w') as f:
         config.write(f)
+
+def python_requires():
+    path = Path('./flit.ini')
+    if path.exists():
+        with modify_config(path) as config:
+            current_version = config['metadata'].get('requires-python')
+            if current_version is None:
+                new_version = input("what's you Python version requirement ? [>=3.4]")
+                if not new_version.strip():
+                    new_version = '>=3.4'
+                config['metadata']['requires-python'] = new_version
+
+
