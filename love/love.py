@@ -15,20 +15,17 @@ import difflib
 import subprocess
 
 import pkgtools.pypi as pp
-import github
 import emoji
 
 
 from travispy import TravisPy
-from overprint import overprint
-from withlog import Info, Message, print_statement
+from withlog import Info, Message
 
 import withlog
 
 from time import sleep
 # from cookiecutter.main import generate_context, generate_files
 
-import keyring
 
 
 import logging
@@ -244,8 +241,10 @@ def submain(p):
                 else:
                     log.info('%s name is close to the following package name: %s', proposal,  closest)
                 response = input('Do you still want to continue ? [Y/n]')
+                if not response:
+                    response = 'y'
                 if not response.lower() == 'y':
-                    sys,exit('Aborting')
+                    sys.exit('Aborting')
             else:
                 log.info('"%s" seems like a great name !', proposal)
 
