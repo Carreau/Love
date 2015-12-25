@@ -250,7 +250,7 @@ def submain(p):
 
 
     #  Actually authenticate with github 
-    #  Create (if do not exist) the named repo, and and clone URL.
+    #  Create (if do not exist) the named repo, and  clone URL.
     with Info('Github'):
         token, user = setup_github_credentials(log=log)
         slug = setup_github_repository(user, proposal, log)
@@ -377,6 +377,14 @@ def project_layout(proposal, user=None, repo=None, log=None):
         os.mkdir(proposal)
     except FileExistsError:
         log.info('Skip directory structure, as project seem to already exists')
+
+    with open('.gitignore') as f:
+        f.write('''
+*.pyc
+__pycache__
+/build/
+/dist/
+''')
 
     with open( '/'.join([proposal, '__init__.py']), 'w') as f: 
         f.write('''
