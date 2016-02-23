@@ -33,6 +33,9 @@ import logging
 from .github import setup_github_credentials, setup_github_repository
 from .flit import python_requires
 
+def yffoo():
+    yield from range(10)
+
 heart = """
    
                 L       OOO    V   V  EEEEE
@@ -378,7 +381,7 @@ def project_layout(proposal, user=None, repo=None, log=None):
     except FileExistsError:
         log.info('Skip directory structure, as project seem to already exists')
 
-    with open('.gitignore') as f:
+    with open('.gitignore', 'w') as f:
         f.write('''
 *.pyc
 __pycache__

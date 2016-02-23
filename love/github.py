@@ -4,22 +4,53 @@ from time import sleep
 import webbrowser
 import github
 import subprocess
+import requests
 
 GITHUB_NEW_TOKEN_URI = 'https://github.com/settings/tokens/new'
+fake_username = 'love tools'
+
+
+def get_auth_token(token):
+
+    if token is not None:
+        return token
+
+    import keyring
+    token = keyring.get_password('github', fake_username)
+    if token is not None:
+        return token
+
+    print("Please enter your github username and password. These are not "
+           "stored, only used to get an oAuth token. You can revoke this at "
+           "any time on Github.")
+    user = input("Username: ")
+    pw = getpass.getpass("Password: ")
+
+    auth_request = {
+      "scopes": [
+        "public_repo",
+      ],
+      "note": "Love tools",
+      "note_url": "https://github.com/Carreau/love",
+    }
+    response = requests.post('https://api.github.com/authorizations',
+                            auth=(user, pw), data=json.dumps(auth_request))
+    if response.status_code == 401 and response.headers.get('X-GitHub-OTP') == 'required; sms':
+        print("Your login API resquest a SMS one time password")
+        sms_pw = getpass.getpass("SMS password: ")
+        response = requests.post('https://api.github.com/authorizations',
+                            auth=(user, pw), 
+                            data=json.dumps(auth_request),
+                            headers={'X-GitHub-OTP':sms_pw})
+    response.raise_for_status()
+    token = json.loads(response.text)['token']
+    keyring.set_password('github', fake_username, token)
+    return token
+
+
 
 def setup_github_credentials(log):
-    token = keyring.get_password('session','github_token')
-
-    if token is None:
-        GITHUB_NEW_TOKEN_URI = 'https://github.com/settings/tokens/new'
-        log.info(emoji.emojize(":heart_with_arrow: == LOVE == :heart_with_arrow:"))
-        log.info("I will need a new token to access your GitHub account, please give me a token that have `write:repo_hook` enable.")
-        log.info("I'll try to open github for you at the right page, otherwise please visit %s", GITHUB_NEW_TOKEN_URI)
-        sleep(5)
-        webbrowser.open_new_tab(GITHUB_NEW_TOKEN_URI)
-        token = input('github token:')
-        keyring.set_password('session','github_token', token)
-        log.info('token stored in your keyring as session:github_token')
+    token=get_auth_token(token)
     gh = github.Github(token)
     user = gh.get_user()
     log.info('Logged in on GitHub as %s ', user.name)
