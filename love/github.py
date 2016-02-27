@@ -1,8 +1,7 @@
-import keyring
-import emoji 
-from time import sleep
-import webbrowser
 import github
+import getpass
+import json
+import keyring
 import subprocess
 import requests
 
@@ -15,7 +14,6 @@ def get_auth_token(token):
     if token is not None:
         return token
 
-    import keyring
     token = keyring.get_password('github', fake_username)
     if token is not None:
         return token
@@ -50,7 +48,7 @@ def get_auth_token(token):
 
 
 def setup_github_credentials(log):
-    token=get_auth_token(token)
+    token=get_auth_token(None)
     gh = github.Github(token)
     user = gh.get_user()
     log.info('Logged in on GitHub as %s ', user.name)
