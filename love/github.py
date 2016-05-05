@@ -48,7 +48,7 @@ def get_auth_token(token):
 
 
 def setup_github_credentials(log):
-    token=get_auth_token(None)
+    token = get_auth_token(None)
     gh = github.Github(token)
     user = gh.get_user()
     log.info('Logged in on GitHub as %s ', user.name)
